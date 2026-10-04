@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Power Club">
+<meta name="theme-color" content="#F2F3EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1B1E1B" media="(prefers-color-scheme: dark)">
+<title>Power Club run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F2F3EE; --raised: #FFFFFF; --ink: #26292A; --grit: #6B675E; --line: #D8DAD0;
+  --heather: #6E4A86; --moss: #4E6B3B; --tarn: #3F6E8C; --peat: #8A5A2E;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #1B1E1B; --raised: #242824; --ink: #E8EAE3; --grit: #A19D93; --line: #353A34;
+          --heather: #BC9DD3; --moss: #A2C08A; --tarn: #8DB8D4; --peat: #D49B67; }
+}
+*, *::before, *::after { box-sizing: inherit; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); }
+body { font: 16px/1.45 var(--body); -webkit-text-size-adjust: 100%; }
+main { max-width: 34rem; margin: 0 auto; padding: 0 1.1rem 6rem; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--heather); outline-offset: 2px; }
+
+header { display: flex; align-items: baseline; justify-content: space-between; padding: 1.1rem 0 0.6rem; }
+header h1 { font: 700 1.6rem/1 var(--display); margin: 0; letter-spacing: 0.01em; }
+.iconbtn { background: none; border: 0; padding: 0.4rem; color: var(--grit); font-size: 0.95rem; }
+
+.status { font-size: 0.85rem; color: var(--grit); margin: 0 0 0.9rem; min-height: 1.2em; }
+.status.err { color: var(--peat); }
+
+/* Nudge */
+.nudge { border-left: 3px solid var(--peat); padding: 0.2rem 0 0.2rem 0.8rem; margin-bottom: 1.4rem; }
+.nudge p { margin: 0 0 0.5rem; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip { border: 1px solid var(--line); background: var(--raised); border-radius: 999px; padding: 0.35rem 0.8rem; font-size: 0.9rem; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* Next session: the one bold element */
+.next { position: relative; overflow: hidden; border-radius: 14px; background: var(--raised);
+        border: 1px solid var(--line); padding: 1.2rem 1.2rem 1.1rem; margin-bottom: 1.6rem; }
+.next svg.contours { position: absolute; inset: -10% -30% auto auto; width: 120%; height: 130%; color: var(--heather); opacity: 0.14; pointer-events: none; }
+.next .when { font-size: 0.9rem; color: var(--grit); margin: 0; position: relative; }
+.next h2 { font: 700 2.7rem/0.95 var(--display); margin: 0.35rem 0 0.6rem; color: var(--heather); position: relative; }
+.next .detail { font-size: 1.05rem; margin: 0 0 0.35rem; position: relative; }
+.next .why { font-size: 0.9rem; color: var(--grit); margin: 0 0 1rem; position: relative; }
+.primary { background: var(--heather); color: var(--paper); border: 0; border-radius: 10px; padding: 0.7rem 1.1rem; font-weight: 600; position: relative; }
+.secondary { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 1.1rem; }
+
+/* Week line */
+.week { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.6rem; }
+.week div { border-top: 2px solid var(--line); padding-top: 0.35rem; }
+.week b { display: block; font: 700 1.5rem/1.1 var(--display); }
+.week span { font-size: 0.8rem; color: var(--grit); }
+
+/* Recent */
+h3 { font: 700 1.2rem/1.2 var(--display); margin: 0 0 0.6rem; }
+ol.log { list-style: none; margin: 0; padding: 0; }
+ol.log li { display: grid; grid-template-columns: 3.6rem 1fr; gap: 0.7rem; padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+ol.log button.row { all: unset; display: contents; cursor: pointer; }
+.day { font: 500 1rem/1.15 var(--display); color: var(--grit); }
+.day b { display: block; color: var(--ink); font-size: 1.15rem; }
+.entry { font-size: 0.95rem; white-space: pre-line; }
+.entry.empty { color: var(--grit); font-style: italic; }
+.tags { display: flex; gap: 0.3rem; margin-bottom: 0.15rem; }
+.tag { font-size: 0.72rem; font-weight: 600; padding: 0.05rem 0.45rem; border-radius: 4px; color: var(--paper); }
+.t-run { background: var(--heather); } .t-climb { background: var(--moss); } .t-cycle { background: var(--tarn); }
+.t-other { background: var(--grit); } .t-sick, .t-rest { background: none; color: var(--grit); border: 1px solid var(--line); }
+
+.fab { position: fixed; right: 1.1rem; bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px)); width: 3.6rem; height: 3.6rem;
+       border-radius: 50%; border: 0; background: var(--ink); color: var(--paper); font-size: 1.9rem; line-height: 1;
+       box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+
+/* Sheets */
+dialog { border: 0; padding: 0; width: 100%; max-width: 34rem; margin: auto auto 0; border-radius: 16px 16px 0 0;
+         background: var(--paper); color: var(--ink); max-height: 92%; }
+dialog::backdrop { background: rgba(20, 22, 20, 0.45); }
+.sheet { padding: 1.2rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom, 0px)); }
+.sheet h3 { font-size: 1.5rem; }
+label { display: block; font-size: 0.85rem; color: var(--grit); margin: 0.9rem 0 0.3rem; }
+input, select, textarea { width: 100%; padding: 0.6rem 0.7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); }
+textarea { min-height: 4.5rem; resize: vertical; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.already { font-size: 0.85rem; color: var(--grit); background: var(--raised); border-radius: 8px; padding: 0.5rem 0.7rem; margin-top: 0.8rem; white-space: pre-line; }
+.actions { display: flex; gap: 0.6rem; margin-top: 1.2rem; }
+.actions .primary { flex: 1; }
+.preview { font-size: 0.85rem; color: var(--grit); margin-top: 0.7rem; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: no-preference) {
+  dialog[open] { animation: up 0.22s ease-out; }
+  @keyframes up { from { transform: translateY(30px); opacity: 0; } }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Power Club run</h1>
+    <button class="iconbtn" id="openSettings" aria-label="Settings">Settings</button>
+  </header>
+  <p class="status" id="status" role="status"></p>
+
+  <section class="nudge" id="nudge" hidden>
+    <p id="nudgeText"></p>
+    <div class="chips" id="nudgeDays"></div>
+  </section>
+
+  <section class="next" id="next" aria-live="polite">
+    <svg class="contours" viewBox="0 0 400 300" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M280 40c60 10 90 60 70 110s-80 70-130 50-60-80-30-120 50-45 90-40z"/>
+      <path d="M275 70c40 6 60 40 46 74s-55 46-88 33-40-54-20-80 34-30 62-27z"/>
+      <path d="M272 98c22 3 32 22 24 41s-30 25-48 18-22-30-11-44 19-17 35-15z"/>
+      <path d="M290 10c85 12 125 85 98 150s-115 100-185 70S120 120 160 60 230 2 290 10z"/>
+      <path d="M300-20c110 15 160 110 125 195S280 300 190 262 80 140 130 60 220-30 300-20z"/>
+    </svg>
+    <p class="when" id="nextWhen">Next session</p>
+    <h2 id="nextTitle">Loading</h2>
+    <p class="detail" id="nextDetail"></p>
+    <p class="why" id="nextWhy"></p>
+    <button class="primary" id="logNext">Log this session</button>
+  </section>
+
+  <section class="week" id="week" aria-label="This week"></section>
+
+  <h3>Last 14 days</h3>
+  <ol class="log" id="recent"></ol>
+</main>
+
+<button class="fab" id="fab" aria-label="Log a session">+</button>
+
+<dialog id="logDialog">
+  <form class="sheet" method="dialog" id="logForm">
+    <h3>Log a session</h3>
+    <label for="logDate">Day</label>
+    <input type="date" id="logDate" required>
+    <div class="already" id="already" hidden></div>
+
+    <label>Activity</label>
+    <div class="chips" id="activityChips"></div>
+
+    <div id="runFields">
+      <label>Run type</label>
+      <div class="chips" id="runTypeChips"></div>
+      <div class="pair">
+        <div><label for="logKm">Distance (km)</label><input id="logKm" inputmode="decimal" placeholder="7"></div>
+        <div><label for="logTime">Time (min or h:mm)</label><input id="logTime" inputmode="decimal" placeholder="35"></div>
+      </div>
+    </div>
+    <div id="kmOnly" hidden>
+      <label for="logKm2">Distance (km)</label><input id="logKm2" inputmode="decimal">
+    </div>
+
+    <label for="logNote">Notes</label>
+    <textarea id="logNote" placeholder="How did it feel?"></textarea>
+    <p class="preview" id="preview"></p>
+
+    <div class="actions">
+      <button type="button" class="secondary" id="cancelLog">Cancel</button>
+      <button type="submit" class="primary" id="saveLog">Save to sheet</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="settingsDialog">
+  <form class="sheet" method="dialog" id="settingsForm">
+    <h3>Settings</h3>
+    <label for="sUrl">Apps Script web app link</label>
+    <input id="sUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+    <label for="sToken">Token</label>
+    <input id="sToken" autocomplete="off">
+    <div class="pair">
+      <div><label for="s5k">Current 5k time</label><input id="s5k" placeholder="23:30"></div>
+      <div><label for="sRuns">Runs per week</label>
+        <select id="sRuns"><option>3</option><option selected>4</option><option>5</option></select></div>
+    </div>
+    <div class="actions">
+      <button type="button" class="secondary" id="cancelSettings">Cancel</button>
+      <button type="submit" class="primary">Save settings</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* ---------- Storage ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('pc.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('pc.' + k, JSON.stringify(v)); } catch {} }
+};
+const settings = Object.assign({ url: '', token: '', fiveK: '23:30', runsPerWeek: 4 }, store.get('settings', {}));
+
+/* ---------- Dates ---------- */
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const fromIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const addDays = (s, n) => { const d = fromIso(s); d.setDate(d.getDate() + n); return iso(d); };
+const diffDays = (a, b) => Math.round((fromIso(a) - fromIso(b)) / 864e5);
+const todayIso = () => iso(new Date());
+const dayName = s => fromIso(s).toLocaleDateString('en-GB', { weekday: 'short' });
+const dayNum = s => fromIso(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+/* ---------- Reading the free-text log ---------- */
+function classifySeg(t) {
+  const out = { tags: [], km: null, mins: null, kind: null, legsHard: false };
+  const tag = x => { if (!out.tags.includes(x)) out.tags.push(x); };
+  if (/\bsick\b|\bill\b|injur|\bflu\b|covid/.test(t)) tag('sick');
+  if (/\brest\b/.test(t) && !out.tags.includes('sick')) tag('rest');
+
+  const kmMatch = t.match(/(\d+(?:\.\d+)?)\s*(?:k|km|kms)\b/);
+  const km = kmMatch ? parseFloat(kmMatch[1]) : null;
+  const colon = t.match(/\b(\d{1,3}):(\d{2})\b/);
+  const minMatch = t.match(/(\d+)\s*(?:min|mins|minutes)\b/);
+  const mins = colon ? (+colon[1] > 3 ? +colon[1] + +colon[2] / 60 : +colon[1] * 60 + +colon[2]) : minMatch ? +minMatch[1] : null;
+
+  const cycle = /cycl|bike|\bmtb\b|\bride\b/.test(t);
+  const run = /\brun\b|\bruns\b|\bran\b|running|parkrun|\bjog|\brace\b|\bfell\b|struggle/.test(t) || (km && !cycle && !/hike|walk/.test(t));
+  if (run) {
+    tag('run'); out.km = km; out.mins = mins;
+    if (/race|parkrun|\bfell\b|struggle|hucklow|round sheffield|small park big run/.test(t)) out.kind = 'race';
+    else if (/threshold|tempo|cruise/.test(t)) out.kind = 'threshold';
+    else if (/hill reps|hills\b|hill sprint/.test(t)) out.kind = 'hills';
+    else if (/interval|\breps\b|\d+\s*x\s*\d|\bx\d|vo2/.test(t)) out.kind = 'intervals';
+    else if (/\blong\b/.test(t) || (km && km >= 12) || (mins && mins >= 80)) out.kind = 'long';
+    else out.kind = 'easy';
+    if (out.kind !== 'easy') out.legsHard = true;
+  }
+  if (cycle) { tag('cycle'); if (!run) { out.km = km; if (km && km >= 50) out.legsHard = true; } }
+  if (/shed|board|boulder|climb|\bwall\b|\btor\b|depot|crag|project|route|pinch|circuit|fingerboard|\bfb\b|repeaters|pickup/.test(t)) tag('climb');
+  if (/football|squash|five.?a.?side|hike|weights|deadlift|squat/.test(t)) tag('other');
+  if (/football|squash|five.?a.?side/.test(t)) out.legsHard = true;
+  return out;
+}
+
+/* Split multi-activity days ("cycle 24 km\nAlso ran 5 km") and merge, keeping run details from the run part. */
+function classify(text) {
+  const t = (text || '').toLowerCase();
+  const out = { tags: [], km: null, mins: null, kind: null, legsHard: false };
+  if (!t.trim()) return out;
+  const segs = t.split(/\n+|\balso\b/).map(s => s.trim()).filter(Boolean).map(classifySeg);
+  const rank = ['easy', 'long', 'hills', 'intervals', 'threshold', 'race'];
+  segs.forEach(s => {
+    s.tags.forEach(x => { if (!out.tags.includes(x)) out.tags.push(x); });
+    out.legsHard = out.legsHard || s.legsHard;
+    if (s.tags.includes('run') && (!out.kind || rank.indexOf(s.kind) > rank.indexOf(out.kind))) {
+      out.kind = s.kind; out.km = s.km; out.mins = s.mins;
+    }
+  });
+  if (!out.tags.includes('run')) { const c = segs.find(s => s.km != null); if (c) out.km = c.km; }
+  if (!out.tags.length) out.tags.push('other');
+  return out;
+}
+
+/* ---------- Paces ---------- */
+function paces(fiveK) {
+  const [m, s] = String(fiveK || '23:30').split(':').map(Number);
+  const per = ((m || 23) * 60 + (s || 0)) / 5;
+  const f = x => `${Math.floor(x / 60)}:${String(Math.round(x % 60)).padStart(2, '0')}`;
+  return { easy: `${f(per * 1.28)}–${f(per * 1.4)}/km`, easySec: per * 1.34,
+           threshold: `${f(per * 1.08)}/km`, interval: `${f(per * 0.99)}/km` };
+}
+
+/* ---------- Next session ---------- */
+function suggest(days) {
+  const today = todayIso();
+  const byDate = Object.fromEntries(days.map(d => [d.date, { ...d, c: classify(d.text) }]));
+  const target = byDate[today] && byDate[today].text ? addDays(today, 1) : today;
+  const get = s => byDate[s] || { date: s, text: '', c: classify('') };
+  const window = n => Array.from({ length: n }, (_, i) => get(addDays(target, -(i + 1))));
+  const last7 = window(7), last42 = window(42);
+  const runs7 = last7.filter(d => d.c.tags.includes('run'));
+  const kinds7 = runs7.map(d => d.c.kind);
+  const count42 = k => last42.filter(d => d.c.kind === k).length;
+  const lastRun = last42.find(d => d.c.tags.includes('run'));
+  const yesterday = get(addDays(target, -1));
+  const p = paces(settings.fiveK);
+  const when = target === today ? 'Today' : 'Tomorrow';
+  const S = (title, detail, why, log) => ({ when, target, title, detail, why, log });
+
+  if (yesterday.c.tags.includes('sick'))
+    return S('Rest', 'Nothing structured. A walk is fine if you feel up to it.', 'You were ill yesterday.', { activity: 'rest' });
+  if (last7.slice(0, 3).some(d => d.c.tags.includes('sick')))
+    return S('Easy 20–30 min', `Very easy, ${p.easy}. Stop if it feels wrong.`, 'Coming back from being ill in the last few days.', { activity: 'run', kind: 'easy' });
+  if (!lastRun || diffDays(target, lastRun.date) >= 10)
+    return S('Easy 30 min', `Conversational pace, ${p.easy}, then 4 × 20 s relaxed strides.`, lastRun ? `Last run was ${diffDays(target, lastRun.date)} days ago, so rebuild before any hard sessions.` : 'No runs in the last six weeks, so start easy.', { activity: 'run', kind: 'easy' });
+  if (runs7.length >= settings.runsPerWeek)
+    return S('No run today', 'Climb, stretch or rest.', `You've already run ${runs7.length} times in the last 7 days.`, { activity: 'rest' });
+  if (yesterday.c.legsHard)
+    return S('Easy 30–40 min', `${p.easy}, flat or gently rolling.`, 'Yesterday was hard on the legs, so keep today easy.', { activity: 'run', kind: 'easy' });
+
+  if (!kinds7.includes('threshold')) {
+    const steps = ['3 × 8 min', '3 × 10 min', '3 × 12 min', '2 × 15 min', '2 × 20 min'];
+    const reps = steps[Math.min(count42('threshold'), steps.length - 1)];
+    return S('Threshold', `15 min easy, ${reps} at ${p.threshold} with 2 min jog, 10 min easy.`, 'No threshold session in the last 7 days.', { activity: 'run', kind: 'threshold', note: reps });
+  }
+  if (!kinds7.some(k => k === 'intervals' || k === 'hills' || k === 'race')) {
+    const lastFast = last42.find(d => d.c.kind === 'intervals' || d.c.kind === 'hills');
+    if (lastFast && lastFast.c.kind === 'intervals') {
+      const steps = ['8 × 60 s uphill', '8 × 90 s uphill', '10 × 90 s uphill'];
+      const reps = steps[Math.min(count42('hills'), steps.length - 1)];
+      return S('Hill reps', `15 min easy, ${reps} at hard effort, jog back down, 10 min easy.`, 'Alternating with intervals. Good for the fells too.', { activity: 'run', kind: 'hills', note: reps });
+    }
+    const steps = ['5 × 800 m', '5 × 1 km', '6 × 1 km', '4 × 1.5 km'];
+    const reps = steps[Math.min(count42('intervals'), steps.length - 1)];
+    return S('Intervals', `15 min easy, ${reps} at ${p.interval} with 2–3 min jog, 10 min easy.`, 'No fast session in the last 7 days.', { activity: 'run', kind: 'intervals', note: reps });
+  }
+  if (!kinds7.includes('long')) {
+    const lastLong = last42.find(d => d.c.kind === 'long' || d.c.kind === 'race');
+    let base = lastLong ? (lastLong.c.mins || (lastLong.c.km ? lastLong.c.km * p.easySec / 60 : 75)) : 65;
+    const mins = Math.round(Math.min(120, Math.max(75, base + 10)) / 5) * 5;
+    return S(`Long run ${mins} min`, `All easy, ${p.easy}. Off-road with some climbing is ideal.`, 'Quality sessions done this week; the long run is the missing piece.', { activity: 'run', kind: 'long' });
+  }
+  return S('Easy 40 min + strides', `${p.easy}, then 6 × 20 s relaxed strides.`, "Key sessions are done for this week, so this is volume.", { activity: 'run', kind: 'easy' });
+}
+
+/* ---------- Data ---------- */
+const DEMO = [
+  ['2026-09-07','Cycle to work'],['2026-09-09','cycle to work. pickups 12 sets with 25kg'],['2026-09-11','cycle to work'],
+  ['2026-09-12',"cycle to and from Jonny's wedding 24 km\n\nAlso ran 5 km"],['2026-09-14','pickups - 6 reps each side'],
+  ['2026-09-16','pickups - 6 reps each side'],['2026-09-17','Football'],['2026-09-20','stanage struggle run 10k 55min'],
+  ['2026-09-22','pickups. 25 kgs 6 reps'],['2026-09-25','cycle'],['2026-09-26','run 6 k. x3 4 min threshold']
+];
+let days = store.get('days', null);
+const demo = () => !settings.url;
+
+function demoDays() {
+  const map = Object.fromEntries(DEMO);
+  const out = [];
+  for (let i = 69; i >= 0; i--) { const d = addDays(todayIso(), -i); out.push({ date: d, text: map[d] || '' }); }
+  DEMO.forEach(([d, t]) => { if (!out.some(x => x.date === d)) out.unshift({ date: d, text: t }); });
+  return out.sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+function fillRange(list) {
+  const map = Object.fromEntries(list.map(d => [d.date, d.text]));
+  const out = [];
+  for (let i = 69; i >= 0; i--) { const d = addDays(todayIso(), -i); out.push({ date: d, text: map[d] || '' }); }
+  return out;
+}
+
+async function api(body) {
+  const res = body
+    ? await fetch(settings.url, { method: 'POST', body: JSON.stringify({ token: settings.token, days: 70, ...body }) })
+    : await fetch(`${settings.url}?token=${encodeURIComponent(settings.token)}&days=70`);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'The sheet returned an error');
+  return data;
+}
+
+function setStatus(msg, err) {
+  const el = document.getElementById('status');
+  el.textContent = msg; el.classList.toggle('err', !!err);
+}
+
+async function refresh() {
+  if (demo()) { days = demoDays(); setStatus('Showing sample entries. Add your script link in Settings to use your sheet.'); render(); return; }
+  if (days) render();
+  setStatus('Updating from your sheet…');
+  try {
+    const data = await api();
+    days = fillRange(data.days); store.set('days', days);
+    setStatus(`Updated ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`);
+    render();
+  } catch (e) {
+    setStatus(`Couldn't reach the sheet: ${e.message}. Check the link and token in Settings.`, true);
+  }
+}
+
+/* ---------- Render ---------- */
+function tagHtml(c) { return c.tags.map(t => `<span class="tag t-${t}">${t === 'run' && c.kind && c.kind !== 'easy' ? c.kind : t}</span>`).join(''); }
+const esc = s => s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+let current = null;
+
+function render() {
+  const today = todayIso();
+  const logged = days.filter(d => d.text && d.date <= today);
+  const last = logged.length ? logged[logged.length - 1].date : null;
+
+  // Nudge: empty days since the last entry (up to yesterday), max 7
+  const nudge = document.getElementById('nudge');
+  const gapDays = [];
+  if (last) for (let d = addDays(last, 1); d < today && gapDays.length < 7; d = addDays(d, 1)) gapDays.push(d);
+  const gap = last ? diffDays(today, last) : null;
+  if (gapDays.length) {
+    nudge.hidden = false;
+    document.getElementById('nudgeText').textContent = gap > 7
+      ? `Nothing logged since ${dayName(last)} ${dayNum(last)}. Fill in what you remember.`
+      : `${gapDays.length} day${gapDays.length > 1 ? 's' : ''} not logged. Tap one to fill it in.`;
+    const recentGap = gap > 7 ? Array.from({ length: 7 }, (_, i) => addDays(today, -(7 - i))) : gapDays;
+    document.getElementById('nudgeDays').innerHTML = recentGap.map(d => `<button class="chip" data-date="${d}">${dayName(d)} ${dayNum(d)}</button>`).join('');
+  } else nudge.hidden = true;
+
+  // Next session
+  current = suggest(days);
+  document.getElementById('nextWhen').textContent = `${current.when}, ${dayName(current.target)} ${dayNum(current.target)}`;
+  document.getElementById('nextTitle').textContent = current.title;
+  document.getElementById('nextDetail').textContent = current.detail;
+  document.getElementById('nextWhy').textContent = current.why;
+  document.getElementById('logNext').textContent = current.log.activity === 'rest' ? 'Log rest day' : 'Log this session';
+
+  // This week (Mon to today)
+  const mon = addDays(today, -((fromIso(today).getDay() + 6) % 7));
+  const wk = days.filter(d => d.date >= mon && d.date <= today).map(d => classify(d.text));
+  const runs = wk.filter(c => c.tags.includes('run'));
+  const km = runs.reduce((a, c) => a + (c.km || 0), 0);
+  const quality = runs.filter(c => ['threshold', 'intervals', 'hills', 'race'].includes(c.kind)).length;
+  const climbs = wk.filter(c => c.tags.includes('climb')).length;
+  document.getElementById('week').innerHTML =
+    [[runs.length, 'runs'], [Math.round(km * 10) / 10, 'run km'], [quality, 'quality'], [climbs, 'climbs']]
+      .map(([v, l]) => `<div><b>${v}</b><span>${l} this week</span></div>`).join('');
+
+  // Recent 14 days, newest first
+  const recent = Array.from({ length: 14 }, (_, i) => addDays(today, -i));
+  const byDate = Object.fromEntries(days.map(d => [d.date, d.text]));
+  document.getElementById('recent').innerHTML = recent.map(d => {
+    const t = byDate[d] || ''; const c = classify(t);
+    return `<li><button class="row" data-date="${d}">
+      <span class="day"><b>${dayName(d)}</b>${dayNum(d)}</span>
+      <span>${c.tags.length ? `<span class="tags">${tagHtml(c)}</span>` : ''}
+      <span class="entry ${t ? '' : 'empty'}">${t ? esc(t) : 'Nothing logged'}</span></span></button></li>`;
+  }).join('');
+}
+
+/* ---------- Log sheet ---------- */
+const ACTIVITIES = ['run', 'climb', 'cycle', 'weights', 'rest', 'sick', 'other'];
+const RUN_TYPES = ['easy', 'threshold', 'intervals', 'hills', 'long', 'race'];
+const form = { activity: 'run', kind: 'easy' };
+const $ = id => document.getElementById(id);
+
+function chipRow(el, list, key) {
+  el.innerHTML = list.map(v => `<button type="button" class="chip" data-v="${v}" aria-pressed="${form[key] === v}">${v[0].toUpperCase() + v.slice(1)}</button>`).join('');
+  el.onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; form[key] = b.dataset.v; updateForm(); };
+}
+
+function composeText() {
+  const note = $('logNote').value.trim();
+  const km = ($('logKm').value || '').trim(), km2 = ($('logKm2').value || '').trim();
+  const time = ($('logTime').value || '').trim();
+  const join = (...p) => p.filter(Boolean).join(' - ');
+  switch (form.activity) {
+    case 'run': return join(`run ${km ? km + 'k ' : ''}${form.kind}`.trim(), time ? (time.includes(':') ? time : time + ' min') : '', note);
+    case 'cycle': return join(`cycle${km2 ? ' ' + km2 + ' km' : ''}`, note);
+    case 'climb': return note && /shed|board|boulder|climb|wall|tor|crag/i.test(note) ? note : join('climb', note);
+    case 'other': return note;
+    default: return join(form.activity, note);
+  }
+}
+
+function updateForm() {
+  chipRow($('activityChips'), ACTIVITIES, 'activity');
+  chipRow($('runTypeChips'), RUN_TYPES, 'kind');
+  $('runFields').hidden = form.activity !== 'run';
+  $('kmOnly').hidden = form.activity !== 'cycle';
+  const existing = (days || []).find(d => d.date === $('logDate').value);
+  $('already').hidden = !(existing && existing.text);
+  if (existing && existing.text) $('already').textContent = `Already logged:\n${existing.text}\n\nThis will be added underneath.`;
+  const text = composeText();
+  $('preview').textContent = text ? `Goes in the sheet as: “${text}”` : '';
+}
+
+function openLog(date, preset) {
+  Object.assign(form, { activity: 'run', kind: 'easy' }, preset || {});
+  $('logDate').value = date || todayIso();
+  ['logKm', 'logKm2', 'logTime'].forEach(id => $(id).value = '');
+  $('logNote').value = preset && preset.note ? preset.note : '';
+  updateForm();
+  $('logDialog').showModal();
+}
+
+$('logForm').addEventListener('input', updateForm);
+$('cancelLog').onclick = () => $('logDialog').close();
+$('logForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const text = composeText();
+  if (!text) { $('preview').textContent = 'Add a note so there is something to save.'; return; }
+  const date = $('logDate').value;
+  if (demo()) {
+    const d = days.find(x => x.date === date);
+    if (d) d.text = d.text ? d.text + '\n' + text : text; else days.push({ date, text });
+    $('logDialog').close(); render(); setStatus('Saved in sample mode only. Add your script link in Settings to save to the sheet.'); return;
+  }
+  $('saveLog').disabled = true; $('saveLog').textContent = 'Saving…';
+  try {
+    const data = await api({ action: 'log', date, text });
+    days = fillRange(data.days); store.set('days', days);
+    $('logDialog').close(); render(); setStatus(`Saved to sheet for ${dayName(date)} ${dayNum(date)}`);
+  } catch (err) {
+    $('preview').textContent = `Not saved: ${err.message}`;
+  } finally { $('saveLog').disabled = false; $('saveLog').textContent = 'Save to sheet'; }
+});
+
+/* ---------- Settings ---------- */
+$('openSettings').onclick = () => {
+  $('sUrl').value = settings.url; $('sToken').value = settings.token;
+  $('s5k').value = settings.fiveK; $('sRuns').value = settings.runsPerWeek;
+  $('settingsDialog').showModal();
+};
+$('cancelSettings').onclick = () => $('settingsDialog').close();
+$('settingsForm').addEventListener('submit', () => {
+  Object.assign(settings, { url: $('sUrl').value.trim(), token: $('sToken').value.trim(),
+    fiveK: $('s5k').value.trim() || '23:30', runsPerWeek: +$('sRuns').value });
+  store.set('settings', settings); days = null; refresh();
+});
+
+/* ---------- Wiring ---------- */
+$('fab').onclick = () => openLog(todayIso());
+$('logNext').onclick = () => openLog(current.target, current.log);
+$('nudgeDays').onclick = e => { const b = e.target.closest('[data-date]'); if (b) openLog(b.dataset.date); };
+$('recent').onclick = e => { const b = e.target.closest('[data-date]'); if (b) openLog(b.dataset.date); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+refresh();
+</script>
+</body>
+</html>
