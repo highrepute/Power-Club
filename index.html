@@ -77,7 +77,7 @@ ol.log button.row { all: unset; display: contents; cursor: pointer; }
 .tags { display: flex; gap: 0.3rem; margin-bottom: 0.15rem; }
 .tag { font-size: 0.72rem; font-weight: 600; padding: 0.05rem 0.45rem; border-radius: 4px; color: var(--paper); }
 .t-run { background: var(--heather); } .t-climb { background: var(--moss); } .t-cycle { background: var(--tarn); }
-.t-other { background: var(--grit); } .t-sick, .t-rest { background: none; color: var(--grit); border: 1px solid var(--line); }
+.t-other { background: var(--grit); } .t-football { background: var(--peat); } .t-sick, .t-rest { background: none; color: var(--grit); border: 1px solid var(--line); }
 
 .fab { position: fixed; right: 1.1rem; bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px)); width: 3.6rem; height: 3.6rem;
        border-radius: 50%; border: 0; background: var(--ink); color: var(--paper); font-size: 1.9rem; line-height: 1;
@@ -211,7 +211,7 @@ const dayNum = s => fromIso(s).toLocaleDateString('en-GB', { day: 'numeric', mon
 
 /* ---------- Reading the free-text log ---------- */
 function classifySeg(t) {
-  const out = { tags: [], km: null, mins: null, kind: null, legsHard: false };
+  const out = { tags: [], km: null, mins: null, kind: null, legsHard: false, football: false };
   const tag = x => { if (!out.tags.includes(x)) out.tags.push(x); };
   if (/\bsick\b|\bill\b|injur|\bflu\b|covid/.test(t)) tag('sick');
   if (/\brest\b/.test(t) && !out.tags.includes('sick')) tag('rest');
@@ -236,8 +236,9 @@ function classifySeg(t) {
   }
   if (cycle) { tag('cycle'); if (!run) { out.km = km; if (km && km >= 50) out.legsHard = true; } }
   if (/shed|board|boulder|climb|\bwall\b|\btor\b|depot|crag|project|route|pinch|circuit|fingerboard|\bfb\b|repeaters|pickup/.test(t)) tag('climb');
-  if (/football|squash|five.?a.?side|hike|weights|deadlift|squat/.test(t)) tag('other');
-  if (/football|squash|five.?a.?side/.test(t)) out.legsHard = true;
+  if (/football|five.?a.?side|5.?a.?side|futsal/.test(t)) { tag('football'); out.football = true; out.legsHard = true; }
+  if (/squash|hike|weights|deadlift|squat/.test(t)) tag('other');
+  if (/squash/.test(t)) out.legsHard = true;
   return out;
 }
 
@@ -251,6 +252,7 @@ function classify(text) {
   segs.forEach(s => {
     s.tags.forEach(x => { if (!out.tags.includes(x)) out.tags.push(x); });
     out.legsHard = out.legsHard || s.legsHard;
+    out.football = out.football || s.football;
     if (s.tags.includes('run') && (!out.kind || rank.indexOf(s.kind) > rank.indexOf(out.kind))) {
       out.kind = s.kind; out.km = s.km; out.mins = s.mins;
     }
@@ -302,7 +304,8 @@ function suggest(days) {
     const reps = steps[Math.min(count42('threshold'), steps.length - 1)];
     return S('Threshold', `15 min easy, ${reps} at ${p.threshold} with 2 min jog, 10 min easy.`, 'No threshold session in the last 7 days.', { activity: 'run', kind: 'threshold', note: reps });
   }
-  if (!kinds7.some(k => k === 'intervals' || k === 'hills' || k === 'race')) {
+  const football7 = last7.some(d => d.c.football);
+  if (!kinds7.some(k => k === 'intervals' || k === 'hills' || k === 'race') && !football7) {
     const lastFast = last42.find(d => d.c.kind === 'intervals' || d.c.kind === 'hills');
     if (lastFast && lastFast.c.kind === 'intervals') {
       const steps = ['8 × 60 s uphill', '8 × 90 s uphill', '10 × 90 s uphill'];
@@ -412,7 +415,7 @@ function render() {
   const wk = days.filter(d => d.date >= mon && d.date <= today).map(d => classify(d.text));
   const runs = wk.filter(c => c.tags.includes('run'));
   const km = runs.reduce((a, c) => a + (c.km || 0), 0);
-  const quality = runs.filter(c => ['threshold', 'intervals', 'hills', 'race'].includes(c.kind)).length;
+  const quality = runs.filter(c => ['threshold', 'intervals', 'hills', 'race'].includes(c.kind)).length + wk.filter(c => c.football).length;
   const climbs = wk.filter(c => c.tags.includes('climb')).length;
   document.getElementById('week').innerHTML =
     [[runs.length, 'runs'], [Math.round(km * 10) / 10, 'run km'], [quality, 'quality'], [climbs, 'climbs']]
@@ -431,7 +434,7 @@ function render() {
 }
 
 /* ---------- Log sheet ---------- */
-const ACTIVITIES = ['run', 'climb', 'cycle', 'weights', 'rest', 'sick', 'other'];
+const ACTIVITIES = ['run', 'football', 'climb', 'cycle', 'weights', 'rest', 'sick', 'other'];
 const RUN_TYPES = ['easy', 'threshold', 'intervals', 'hills', 'long', 'race'];
 const form = { activity: 'run', kind: 'easy' };
 const $ = id => document.getElementById(id);
