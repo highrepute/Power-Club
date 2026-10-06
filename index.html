@@ -59,6 +59,11 @@ header h1 { font: 700 1.6rem/1 var(--display); margin: 0; letter-spacing: 0.01em
 .next h2 { font: 700 2.7rem/0.95 var(--display); margin: 0.35rem 0 0.6rem; color: var(--heather); position: relative; }
 .next .detail { font-size: 1.05rem; margin: 0 0 0.35rem; position: relative; }
 .next .why { font-size: 0.9rem; color: var(--grit); margin: 0 0 1rem; position: relative; }
+.next.climbcard h2 { color: var(--moss); }
+.next.climbcard svg.contours { color: var(--moss); }
+.next.climbcard .primary { background: var(--moss); }
+.cardactions { display: flex; gap: 0.6rem; flex-wrap: wrap; position: relative; }
+.linkbtn { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 1rem; color: var(--ink); text-decoration: none; background: var(--raised); }
 .primary { background: var(--heather); color: var(--paper); border: 0; border-radius: 10px; padding: 0.7rem 1.1rem; font-weight: 600; position: relative; }
 .secondary { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 1.1rem; }
 
@@ -132,7 +137,25 @@ textarea { min-height: 4.5rem; resize: vertical; }
     <h2 id="nextTitle">Loading</h2>
     <p class="detail" id="nextDetail"></p>
     <p class="why" id="nextWhy"></p>
-    <button class="primary" id="logNext">Log this session</button>
+    <div class="cardactions"><button class="primary" id="logNext">Log this session</button></div>
+  </section>
+
+  <section class="next climbcard" id="nextClimb" aria-live="polite">
+    <svg class="contours" viewBox="0 0 400 300" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M280 40c60 10 90 60 70 110s-80 70-130 50-60-80-30-120 50-45 90-40z"/>
+      <path d="M275 70c40 6 60 40 46 74s-55 46-88 33-40-54-20-80 34-30 62-27z"/>
+      <path d="M272 98c22 3 32 22 24 41s-30 25-48 18-22-30-11-44 19-17 35-15z"/>
+      <path d="M290 10c85 12 125 85 98 150s-115 100-185 70S120 120 160 60 230 2 290 10z"/>
+      <path d="M300-20c110 15 160 110 125 195S280 300 190 262 80 140 130 60 220-30 300-20z"/>
+    </svg>
+    <p class="when" id="climbWhen">Next climb</p>
+    <h2 id="climbTitle">Loading</h2>
+    <p class="detail" id="climbDetail"></p>
+    <p class="why" id="climbWhy"></p>
+    <div class="cardactions">
+      <button class="primary" id="logClimb">Log this session</button>
+      <a class="linkbtn" id="fbLink" href="https://highrepute.github.io/Fingerboard-timer/" target="_blank" rel="noopener" hidden>Fingerboard Timer</a>
+    </div>
   </section>
 
   <section class="week" id="week" aria-label="This week"></section>
@@ -161,6 +184,10 @@ textarea { min-height: 4.5rem; resize: vertical; }
         <div><label for="logTime">Time (min or h:mm)</label><input id="logTime" inputmode="decimal" placeholder="35"></div>
       </div>
     </div>
+    <div id="climbFields" hidden>
+      <label>Climbing session</label>
+      <div class="chips" id="climbTypeChips"></div>
+    </div>
     <div id="kmOnly" hidden>
       <label for="logKm2">Distance (km)</label><input id="logKm2" inputmode="decimal">
     </div>
@@ -188,6 +215,12 @@ textarea { min-height: 4.5rem; resize: vertical; }
       <div><label for="sRuns">Runs per week</label>
         <select id="sRuns"><option>3</option><option selected>4</option><option>5</option></select></div>
     </div>
+    <div class="pair">
+      <div><label for="sClimbDays">Climbing days per week</label>
+        <select id="sClimbDays"><option>2</option><option>3</option><option selected>4</option><option>5</option></select></div>
+      <div><label for="sFocus">Climbing focus</label>
+        <select id="sFocus"><option value="balanced">Balanced</option><option value="strength">Strength</option><option value="project">Route project</option></select></div>
+    </div>
     <div class="actions">
       <button type="button" class="secondary" id="cancelSettings">Cancel</button>
       <button type="submit" class="primary">Save settings</button>
@@ -201,7 +234,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('pc.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('pc.' + k, JSON.stringify(v)); } catch {} }
 };
-const settings = Object.assign({ url: '', token: '', fiveK: '23:30', runsPerWeek: 4 }, store.get('settings', {}));
+const settings = Object.assign({ url: '', token: '', fiveK: '22:30', runsPerWeek: 4, climbDays: 4, focus: 'balanced' }, store.get('settings', {}));
 
 /* ---------- Dates ---------- */
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -214,7 +247,7 @@ const dayNum = s => fromIso(s).toLocaleDateString('en-GB', { day: 'numeric', mon
 
 /* ---------- Reading the free-text log ---------- */
 function classifySeg(t) {
-  const out = { tags: [], km: null, mins: null, kind: null, legsHard: false, football: false };
+  const out = { tags: [], km: null, mins: null, kind: null, legsHard: false, football: false, climb: [] };
   const tag = x => { if (!out.tags.includes(x)) out.tags.push(x); };
   if (/\bsick\b|\bill\b|injur|\bflu\b|covid/.test(t)) tag('sick');
   if (/\brest\b/.test(t) && !out.tags.includes('sick')) tag('rest');
@@ -238,17 +271,37 @@ function classifySeg(t) {
     if (out.kind !== 'easy') out.legsHard = true;
   }
   if (cycle) { tag('cycle'); if (!run) { out.km = km; if (km && km >= 50) out.legsHard = true; } }
-  if (/shed|board|boulder|climb|\bwall\b|\btor\b|depot|crag|project|route|pinch|circuit|fingerboard|\bfb\b|repeaters|pickup/.test(t)) tag('climb');
+  out.climb = climbKinds(t, run);
+  if (out.climb.length) tag('climb');
   if (/football|five.?a.?side|5.?a.?side|futsal/.test(t)) { tag('football'); out.football = true; out.legsHard = true; }
   if (/squash|hike|weights|deadlift|squat/.test(t)) tag('other');
   if (/squash/.test(t)) out.legsHard = true;
   return out;
 }
 
+/* Climbing session types and how hard they are on fingers (3 = high, 1 = low). */
+const CLIMB_LOAD = { hangs: 3, limit: 3, outdoor: 3, pickups: 2, pe: 2, easy: 1 };
+function climbKinds(t, isRun) {
+  const climbWord = /shed|board|boulder|climb|\bwall\b|\btor\b|depot|crag|project|route|circuit|fingerboard|\bfb\b|hang|repeaters|pickup|moon|kilter|redpoint|\bfont\b|mecca|raven/;
+  if (!climbWord.test(t)) return [];
+  if (isRun && !/climb|boulder|board|shed|route|crag|fingerboard|pickup/.test(t)) return [];
+  const k = [];
+  if (/fingerboard|hangboard|\bfb\b|max hang|\bhangs\b|repeaters/.test(t)) k.push('hangs');
+  if (/pickup|pinch block/.test(t)) k.push('pickups');
+  if (/circuit|4\s*x\s*4|\blaps\b|pump|power endurance|\bpe\b|\barc\b/.test(t)) k.push('pe');
+  if (/\btor\b|raven|mecca|redpoint|crag|outdoor|sport route|\bfont\b/.test(t)) k.push('outdoor');
+  const easy = /potter|light|easy|social|family|\bkids\b|technique/.test(t);
+  if (/shed|\bboard|limit|project|moon|kilter/.test(t) && !easy) k.push('limit');
+  if (!k.length) k.push(easy ? 'easy' : (/shed|board|boulder|depot|wall|climb/.test(t) ? 'limit' : 'easy'));
+  if (easy && !k.includes('easy') && k.every(x => x === 'limit')) return ['easy'];
+  return k;
+}
+const climbLoad = c => Math.max(0, ...c.climb.map(k => CLIMB_LOAD[k] || 1));
+
 /* Split multi-activity days ("cycle 24 km\nAlso ran 5 km") and merge, keeping run details from the run part. */
 function classify(text) {
   const t = (text || '').toLowerCase();
-  const out = { tags: [], km: null, mins: null, kind: null, legsHard: false };
+  const out = { tags: [], km: null, mins: null, kind: null, legsHard: false, football: false, climb: [] };
   if (!t.trim()) return out;
   const segs = t.split(/\n+|\balso\b/).map(s => s.trim()).filter(Boolean).map(classifySeg);
   const rank = ['easy', 'long', 'hills', 'intervals', 'threshold', 'race'];
@@ -256,6 +309,7 @@ function classify(text) {
     s.tags.forEach(x => { if (!out.tags.includes(x)) out.tags.push(x); });
     out.legsHard = out.legsHard || s.legsHard;
     out.football = out.football || s.football;
+    s.climb.forEach(k => { if (!out.climb.includes(k)) out.climb.push(k); });
     if (s.tags.includes('run') && (!out.kind || rank.indexOf(s.kind) > rank.indexOf(out.kind))) {
       out.kind = s.kind; out.km = s.km; out.mins = s.mins;
     }
@@ -328,6 +382,63 @@ function suggest(days) {
   return S('Easy 40 min + strides', `${p.easy}, then 6 × 20 s relaxed strides.`, "Key sessions are done for this week, so this is volume.", { activity: 'run', kind: 'easy' });
 }
 
+/* ---------- Next climbing session ---------- */
+function suggestClimb(days) {
+  const today = todayIso();
+  const byDate = Object.fromEntries(days.map(d => [d.date, { ...d, c: classify(d.text) }]));
+  const target = byDate[today] && byDate[today].text ? addDays(today, 1) : today;
+  const get = s => byDate[s] || { date: s, text: '', c: classify('') };
+  const back = n => Array.from({ length: n }, (_, i) => get(addDays(target, -(i + 1))));
+  const last7 = back(7), last42 = back(42);
+  const climbed = d => d.c.climb.length > 0;
+  const has7 = k => last7.some(d => d.c.climb.includes(k));
+  const count42 = k => last42.filter(d => d.c.climb.includes(k)).length;
+  const y = last7[0], y2 = last7[1];
+  const when = target === today ? 'Today' : 'Tomorrow';
+  const weekend = [0, 6].includes(fromIso(target).getDay());
+  const S = (title, detail, why, log, extra = {}) => ({ when, target, title, detail, why, log, ...extra });
+  const pickupsNote = has7('pickups') ? '' : ' Finish with pickups: work up to a heavy set of 6 each hand, then 3 more sets.';
+
+  if (last7.slice(0, 3).some(d => /injur|pulley|tweak|tendon|elbow|shoulder|wrist/.test((d.text || '').toLowerCase())))
+    return S('Rest the injury', 'No hard pulling. Gentle mobility only, and see a physio if a finger or elbow isn\'t improving.', 'An injury or niggle is logged in the last 3 days.', { activity: 'rest' });
+  if (y.c.tags.includes('sick'))
+    return S('Rest', 'Nothing structured today.', 'You were ill yesterday.', { activity: 'rest' });
+
+  let streak = 0; for (const d of last7) { if (climbed(d)) streak++; else break; }
+  if (streak >= 3)
+    return S('Rest day', 'Fingers recover between sessions, not during them.', `You've climbed ${streak} days in a row.`, { activity: 'rest' });
+  const days7 = last7.filter(climbed).length;
+  if (days7 >= settings.climbDays)
+    return S('No climbing today', 'Rest, or 20 min of antagonist work: push-ups, shoulder press, wrist extensors.', `You've already climbed ${days7} days this week.`, { activity: 'rest' });
+  if (climbLoad(y.c) >= 3 || (climbLoad(y.c) >= 2 && climbLoad(y2.c) >= 3))
+    return S('Rest or antagonists', '20 min of push-ups, shoulder press and wrist extensors, or just rest.', 'Yesterday was hard on the fingers. Give them 48 hours before the next hard session.', { activity: 'rest' });
+
+  const fresh = climbLoad(y.c) <= 1;
+  const sessions = {
+    outdoor: () => S('Redpoint day', 'Good warm-up, then 3–4 quality burns on the project with full rest. Stop when you start falling lower.', 'You\'re fresh and it\'s the weekend. Go if conditions are good.', { activity: 'climb', ckind: 'outdoor' }),
+    limit: () => {
+      const steps = ['5–6 hard problems', '6–8 hard problems', '8 hard attempts plus 2 linked hard moves'];
+      const s = steps[Math.min(Math.floor(count42('limit') / 2), steps.length - 1)];
+      return S('Limit bouldering', `On the Shed: thorough warm-up, then ${s} near your max, 3–4 min between attempts. Stop when quality drops.${pickupsNote}`, has7('limit') ? 'Next priority for your focus.' : 'No limit session in the last 7 days.', { activity: 'climb', ckind: 'limit', note: s });
+    },
+    hangs: () => {
+      const steps = ['5 × 10 s', '6 × 10 s', '8 × 10 s'];
+      const s = steps[Math.min(Math.floor(count42('hangs') / 2), steps.length - 1)];
+      return S('Max hangs', `Warm up, then ${s} on 20 mm at a load you could just hold for 13 s, 3 min rest. Add 2–5% once every set feels solid.${pickupsNote}`, 'No fingerboard strength session in the last 7 days.', { activity: 'climb', ckind: 'hangs', note: s }, { fingerboard: true });
+    },
+    pe: () => {
+      const steps = ['3 sets of 4×4', '4 sets of 4×4', '3 linked circuits of 25–30 moves, equal rest'];
+      const s = steps[Math.min(Math.floor(count42('pe') / 2), steps.length - 1)];
+      return S('Power endurance', `${s} on problems about 3 grades below your max, 4 min between sets. Should be pumpy but controlled.`, 'No power endurance session in the last 7 days.', { activity: 'climb', ckind: 'pe', note: s });
+    }
+  };
+  const order = { strength: ['limit', 'hangs', 'pe'], balanced: ['limit', 'pe', 'hangs'], project: ['pe', 'limit', 'hangs'] }[settings.focus] || ['limit', 'pe', 'hangs'];
+  if (settings.focus === 'project' && weekend && fresh) return sessions.outdoor();
+  for (const k of order) if (!has7(k) && (fresh || k === 'pe')) return sessions[k]();
+  if (!fresh) return S('Easy climbing', '45–60 min of easy movement well below your limit. Good day for technique.', 'Fingers aren\'t fully fresh, so keep the intensity down.', { activity: 'climb', ckind: 'easy' });
+  return S('Volume session', '60–90 min of climbing well below your limit: lots of different problems or routes, focus on moving well.', 'Key sessions are done for this week, so this is mileage.', { activity: 'climb', ckind: 'easy' });
+}
+
 /* ---------- Data ---------- */
 const DEMO = [
   ['2026-09-07','Cycle to work'],['2026-09-09','cycle to work. pickups 12 sets with 25kg'],['2026-09-11','cycle to work'],
@@ -382,9 +493,13 @@ async function refresh() {
 }
 
 /* ---------- Render ---------- */
-function tagHtml(c) { return c.tags.map(t => `<span class="tag t-${t}">${t === 'run' && c.kind && c.kind !== 'easy' ? c.kind : t}</span>`).join(''); }
+const CLIMB_SHORT = { limit: 'limit', hangs: 'hangs', pickups: 'pickups', pe: 'PE', outdoor: 'outdoor', easy: 'easy climb' };
+function tagHtml(c) {
+  return c.tags.flatMap(t => t === 'climb' ? c.climb.map(k => `<span class="tag t-climb">${CLIMB_SHORT[k]}</span>`)
+    : [`<span class="tag t-${t}">${t === 'run' && c.kind && c.kind !== 'easy' ? c.kind : t}</span>`]).join('');
+}
 const esc = s => s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-let current = null;
+let current = null, currentClimb = null;
 
 function render() {
   const today = todayIso();
@@ -407,11 +522,18 @@ function render() {
 
   // Next session
   current = suggest(days);
-  document.getElementById('nextWhen').textContent = `${current.when}, ${dayName(current.target)} ${dayNum(current.target)}`;
+  document.getElementById('nextWhen').textContent = `Running · ${current.when}, ${dayName(current.target)} ${dayNum(current.target)}`;
   document.getElementById('nextTitle').textContent = current.title;
   document.getElementById('nextDetail').textContent = current.detail;
   document.getElementById('nextWhy').textContent = current.why;
   document.getElementById('logNext').textContent = current.log.activity === 'rest' ? 'Log rest day' : 'Log this session';
+  currentClimb = suggestClimb(days);
+  $('climbWhen').textContent = `Climbing · ${currentClimb.when}, ${dayName(currentClimb.target)} ${dayNum(currentClimb.target)}`;
+  $('climbTitle').textContent = currentClimb.title;
+  $('climbDetail').textContent = currentClimb.detail;
+  $('climbWhy').textContent = currentClimb.why;
+  $('logClimb').textContent = currentClimb.log.activity === 'rest' ? 'Log rest day' : 'Log this session';
+  $('fbLink').hidden = !currentClimb.fingerboard;
 
   // This week (Mon to today)
   const mon = addDays(today, -((fromIso(today).getDay() + 6) % 7));
@@ -439,11 +561,13 @@ function render() {
 /* ---------- Log sheet ---------- */
 const ACTIVITIES = ['run', 'football', 'climb', 'cycle', 'weights', 'rest', 'sick', 'other'];
 const RUN_TYPES = ['easy', 'threshold', 'intervals', 'hills', 'long', 'race'];
-const form = { activity: 'run', kind: 'easy' };
+const CLIMB_TYPES = { limit: 'Limit / board', hangs: 'Fingerboard', pickups: 'Pickups', pe: 'Power endurance', outdoor: 'Outdoor / project', easy: 'Easy' };
+const CLIMB_TEXT = { limit: 'board limit session', hangs: 'fingerboard max hangs', pickups: 'pickups', pe: 'power endurance circuits', outdoor: 'outdoor redpoint', easy: 'easy climbing' };
+const form = { activity: 'run', kind: 'easy', ckind: 'limit' };
 const $ = id => document.getElementById(id);
 
-function chipRow(el, list, key) {
-  el.innerHTML = list.map(v => `<button type="button" class="chip" data-v="${v}" aria-pressed="${form[key] === v}">${v[0].toUpperCase() + v.slice(1)}</button>`).join('');
+function chipRow(el, list, key, labels) {
+  el.innerHTML = list.map(v => `<button type="button" class="chip" data-v="${v}" aria-pressed="${form[key] === v}">${labels ? labels[v] : v[0].toUpperCase() + v.slice(1)}</button>`).join('');
   el.onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; form[key] = b.dataset.v; updateForm(); };
 }
 
@@ -455,7 +579,7 @@ function composeText() {
   switch (form.activity) {
     case 'run': return join(`run ${km ? km + 'k ' : ''}${form.kind}`.trim(), time ? (time.includes(':') ? time : time + ' min') : '', note);
     case 'cycle': return join(`cycle${km2 ? ' ' + km2 + ' km' : ''}`, note);
-    case 'climb': return note && /shed|board|boulder|climb|wall|tor|crag/i.test(note) ? note : join('climb', note);
+    case 'climb': return join(CLIMB_TEXT[form.ckind] || 'climb', note);
     case 'other': return note;
     default: return join(form.activity, note);
   }
@@ -464,7 +588,9 @@ function composeText() {
 function updateForm() {
   chipRow($('activityChips'), ACTIVITIES, 'activity');
   chipRow($('runTypeChips'), RUN_TYPES, 'kind');
+  chipRow($('climbTypeChips'), Object.keys(CLIMB_TYPES), 'ckind', CLIMB_TYPES);
   $('runFields').hidden = form.activity !== 'run';
+  $('climbFields').hidden = form.activity !== 'climb';
   $('kmOnly').hidden = form.activity !== 'cycle';
   const existing = (days || []).find(d => d.date === $('logDate').value);
   $('already').hidden = !(existing && existing.text);
@@ -474,7 +600,7 @@ function updateForm() {
 }
 
 function openLog(date, preset) {
-  Object.assign(form, { activity: 'run', kind: 'easy' }, preset || {});
+  Object.assign(form, { activity: 'run', kind: 'easy', ckind: 'limit' }, preset || {});
   $('logDate').value = date || todayIso();
   ['logKm', 'logKm2', 'logTime'].forEach(id => $(id).value = '');
   $('logNote').value = preset && preset.note ? preset.note : '';
@@ -508,18 +634,21 @@ $('logForm').addEventListener('submit', async e => {
 $('openSettings').onclick = () => {
   $('sUrl').value = settings.url; $('sToken').value = settings.token;
   $('s5k').value = settings.fiveK; $('sRuns').value = settings.runsPerWeek;
+  $('sClimbDays').value = settings.climbDays; $('sFocus').value = settings.focus;
   $('settingsDialog').showModal();
 };
 $('cancelSettings').onclick = () => $('settingsDialog').close();
 $('settingsForm').addEventListener('submit', () => {
   Object.assign(settings, { url: $('sUrl').value.trim(), token: $('sToken').value.trim(),
-    fiveK: $('s5k').value.trim() || '23:30', runsPerWeek: +$('sRuns').value });
+    fiveK: $('s5k').value.trim() || '22:30', runsPerWeek: +$('sRuns').value,
+    climbDays: +$('sClimbDays').value, focus: $('sFocus').value });
   store.set('settings', settings); days = null; refresh();
 });
 
 /* ---------- Wiring ---------- */
 $('fab').onclick = () => openLog(todayIso());
 $('logNext').onclick = () => openLog(current.target, current.log);
+$('logClimb').onclick = () => openLog(currentClimb.target, currentClimb.log);
 $('nudgeDays').onclick = e => { const b = e.target.closest('[data-date]'); if (b) openLog(b.dataset.date); };
 $('recent').onclick = e => { const b = e.target.closest('[data-date]'); if (b) openLog(b.dataset.date); };
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
