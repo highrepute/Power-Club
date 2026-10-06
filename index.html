@@ -654,5 +654,14 @@ $('recent').onclick = e => { const b = e.target.closest('[data-date]'); if (b) o
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 refresh();
 </script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+      .then((reg) => reg.update().catch(() => {}))
+      .catch(() => {});
+  });
+}
+</script>
 </body>
 </html>
