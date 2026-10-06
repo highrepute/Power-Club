@@ -1,9 +1,9 @@
 {
   "name": "Power Club run",
   "short_name": "Power Club",
-  "id": "./",
-  "start_url": "./",
-  "scope": "./",
+  "id": "/Power-Club/",
+  "start_url": "/Power-Club/",
+  "scope": "/Power-Club/",
   "display": "standalone",
   "background_color": "#F2F3EE",
   "theme_color": "#6E4A86",
