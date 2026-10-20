@@ -68,10 +68,13 @@ header h1 { font: 700 1.6rem/1 var(--display); margin: 0; letter-spacing: 0.01em
 .secondary { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 1.1rem; }
 
 /* Week line */
-.week { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.6rem; }
+.statshead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem; }
+.statshead span { font-size: 0.8rem; color: var(--grit); }
+.week { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem 0.6rem; margin-bottom: 1.8rem; }
 .week div { border-top: 2px solid var(--line); padding-top: 0.35rem; }
 .week b { display: block; font: 700 1.5rem/1.1 var(--display); }
-.week span { font-size: 0.8rem; color: var(--grit); }
+.week span { display: block; font-size: 0.85rem; }
+.week small { display: block; font-size: 0.75rem; color: var(--grit); }
 
 /* Recent */
 h3 { font: 700 1.2rem/1.2 var(--display); margin: 0 0 0.6rem; }
@@ -158,7 +161,8 @@ textarea { min-height: 4.5rem; resize: vertical; }
     </div>
   </section>
 
-  <section class="week" id="week" aria-label="This week"></section>
+  <div class="statshead"><h3>Last 12 months</h3><span>this week underneath</span></div>
+  <section class="week" id="week" aria-label="Totals for the last 12 months and this week"></section>
 
   <h3>Last 14 days</h3>
   <ol class="log" id="recent"></ol>
@@ -262,7 +266,7 @@ function classifySeg(t) {
   const run = /\brun\b|\bruns\b|\bran\b|running|parkrun|\bjog|\brace\b|\bfell\b|struggle/.test(t) || (km && !cycle && !/hike|walk/.test(t));
   if (run) {
     tag('run'); out.km = km; out.mins = mins;
-    if (/race|parkrun|\bfell\b|struggle|hucklow|round sheffield|small park big run/.test(t)) out.kind = 'race';
+    if (/race|parkrun|\bfell\b|struggle|commotion|hucklow|round sheffield|small park big run/.test(t)) out.kind = 'race';
     else if (/threshold|tempo|cruise/.test(t)) out.kind = 'threshold';
     else if (/hill reps|hills\b|hill sprint/.test(t)) out.kind = 'hills';
     else if (/interval|\breps\b|\d+\s*x\s*\d|\bx\d|vo2/.test(t)) out.kind = 'intervals';
@@ -407,13 +411,21 @@ function suggestClimb(days) {
   let streak = 0; for (const d of last7) { if (climbed(d)) streak++; else break; }
   if (streak >= 3)
     return S('Rest day', 'Fingers recover between sessions, not during them.', `You've climbed ${streak} days in a row.`, { activity: 'rest' });
-  const days7 = last7.filter(climbed).length;
-  if (days7 >= settings.climbDays)
-    return S('No climbing today', 'Rest, or 20 min of antagonist work: push-ups, shoulder press, wrist extensors.', `You've already climbed ${days7} days this week.`, { activity: 'rest' });
+  // Weekly target: count climbing days in the calendar week (Mon to Sun), like the sheet.
+  const weekMon = addDays(target, -((fromIso(target).getDay() + 6) % 7));
+  const daysThisWeek = last7.filter(d => d.date >= weekMon && climbed(d)).length;
+  if (daysThisWeek >= settings.climbDays)
+    return S('No climbing today', 'Rest, or 20 min of antagonist work: push-ups, shoulder press, wrist extensors.', `You've already climbed ${daysThisWeek} days this week.`, { activity: 'rest' });
   if (climbLoad(y.c) >= 3 || (climbLoad(y.c) >= 2 && climbLoad(y2.c) >= 3))
     return S('Rest or antagonists', '20 min of push-ups, shoulder press and wrist extensors, or just rest.', 'Yesterday was hard on the fingers. Give them 48 hours before the next hard session.', { activity: 'rest' });
 
-  const fresh = climbLoad(y.c) <= 1;
+  // Recovery: finger fatigue from the last 7 days, regardless of week, fading 40% a day.
+  const fatigue = last7.reduce((a, d, i) => a + climbLoad(d.c) * Math.pow(0.6, i), 0);
+  const hardDays = last7.slice(0, 4).filter(d => climbLoad(d.c) >= 3).map(d => dayName(d.date));
+  if (fatigue >= 3.3)
+    return S('Rest day', 'Rest, or 20 min of antagonist work: push-ups, shoulder press, wrist extensors.', `Your fingers are still carrying a block of hard sessions (${hardDays.reverse().join(', ')}).`, { activity: 'rest' });
+
+  const fresh = fatigue < 2;
   const sessions = {
     outdoor: () => S('Redpoint day', 'Good warm-up, then 3–4 quality burns on the project with full rest. Stop when you start falling lower.', 'You\'re fresh and it\'s the weekend. Go if conditions are good.', { activity: 'climb', ckind: 'outdoor' }),
     limit: () => {
@@ -452,7 +464,7 @@ const demo = () => !settings.url;
 function demoDays() {
   const map = Object.fromEntries(DEMO);
   const out = [];
-  for (let i = 69; i >= 0; i--) { const d = addDays(todayIso(), -i); out.push({ date: d, text: map[d] || '' }); }
+  for (let i = 365; i >= 0; i--) { const d = addDays(todayIso(), -i); out.push({ date: d, text: map[d] || '' }); }
   DEMO.forEach(([d, t]) => { if (!out.some(x => x.date === d)) out.unshift({ date: d, text: t }); });
   return out.sort((a, b) => a.date < b.date ? -1 : 1);
 }
@@ -460,14 +472,14 @@ function demoDays() {
 function fillRange(list) {
   const map = Object.fromEntries(list.map(d => [d.date, d.text]));
   const out = [];
-  for (let i = 69; i >= 0; i--) { const d = addDays(todayIso(), -i); out.push({ date: d, text: map[d] || '' }); }
+  for (let i = 365; i >= 0; i--) { const d = addDays(todayIso(), -i); out.push({ date: d, text: map[d] || '' }); }
   return out;
 }
 
 async function api(body) {
   const res = body
-    ? await fetch(settings.url, { method: 'POST', body: JSON.stringify({ token: settings.token, days: 70, ...body }) })
-    : await fetch(`${settings.url}?token=${encodeURIComponent(settings.token)}&days=70`);
+    ? await fetch(settings.url, { method: 'POST', body: JSON.stringify({ token: settings.token, days: 366, ...body }) })
+    : await fetch(`${settings.url}?token=${encodeURIComponent(settings.token)}&days=366`);
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || 'The sheet returned an error');
   return data;
@@ -535,16 +547,26 @@ function render() {
   $('logClimb').textContent = currentClimb.log.activity === 'rest' ? 'Log rest day' : 'Log this session';
   $('fbLink').hidden = !currentClimb.fingerboard;
 
-  // This week (Mon to today)
+  // Totals: last 12 months, with this week (Mon to today) underneath
   const mon = addDays(today, -((fromIso(today).getDay() + 6) % 7));
-  const wk = days.filter(d => d.date >= mon && d.date <= today).map(d => classify(d.text));
-  const runs = wk.filter(c => c.tags.includes('run'));
-  const km = runs.reduce((a, c) => a + (c.km || 0), 0);
-  const quality = runs.filter(c => ['threshold', 'intervals', 'hills', 'race'].includes(c.kind)).length + wk.filter(c => c.football).length;
-  const climbs = wk.filter(c => c.tags.includes('climb')).length;
-  document.getElementById('week').innerHTML =
-    [[runs.length, 'runs'], [Math.round(km * 10) / 10, 'run km'], [quality, 'quality'], [climbs, 'climbs']]
-      .map(([v, l]) => `<div><b>${v}</b><span>${l} this week</span></div>`).join('');
+  const yearAgo = addDays(today, -365);
+  const tally = from => {
+    const cs = days.filter(d => d.date > from && d.date <= today).map(d => classify(d.text));
+    const runs = cs.filter(c => c.tags.includes('run'));
+    return {
+      runs: runs.length,
+      km: Math.round(runs.reduce((a, c) => a + (c.km || 0), 0)),
+      races: runs.filter(c => c.kind === 'race').length,
+      climbs: cs.filter(c => c.climb.length).length,
+      football: cs.filter(c => c.football).length,
+      rides: cs.filter(c => c.tags.includes('cycle')).length
+    };
+  };
+  const yr = tally(yearAgo), wkT = tally(addDays(mon, -1));
+  document.getElementById('week').innerHTML = [
+    ['km', 'km run'], ['runs', 'runs'], ['races', 'races'],
+    ['climbs', 'climbing sessions'], ['football', 'football'], ['rides', 'bike rides']
+  ].map(([k, l]) => `<div><b>${yr[k].toLocaleString('en-GB')}</b><span>${l}</span><small>${wkT[k]} this week</small></div>`).join('');
 
   // Recent 14 days, newest first
   const recent = Array.from({ length: 14 }, (_, i) => addDays(today, -i));
